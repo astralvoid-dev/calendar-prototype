@@ -1,29 +1,32 @@
 'use client'
 
 import { useEffect, useState } from "react";
-// import { supabase } from "../lib/init-supabase.js"
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from "../lib/init-supabase"
 
 export default function Patients(){
-    const [patients, setPatients] = useState([]);
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+    const [patients, setPatients] = useState<any[]>([]);
 
     useEffect(() => {
         fetchPatients();
     }, []);
 
     const fetchPatients = async () => {
-        const { data: patients, error } = await supabase.from('patients').select('*');
+        const { data: patientsData, error } = await supabase.from('patients').select('*');
         if (error) {
             console.error('Error fetching patients:', error);
             return;
         }
-        setPatients(patients);
+        setPatients(patientsData || []);
     };
     
     return (
-        <ul>
-            <li>Patient</li>
-        </ul>
+        <div>
+            <h1>Patient</h1>
+            <ul>
+                {patients.map((patient, idx) => (
+                    <li key={idx}>{JSON.stringify(patient)}</li>
+                ))}
+            </ul>
+        </div>
     );
 }
