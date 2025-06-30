@@ -8,8 +8,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { ChevronDownIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, ChevronsUpDownIcon, MapPinIcon, MoveLeftIcon, MoveRightIcon, NotebookPenIcon } from "lucide-react";
 import { Calendar } from "./ui/calendar";
+import AppointmentBox from "./appointment-box";
+import { supabase } from "@/lib/init-supabase";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "./ui/command";
 
 export default function MainCalendar(){
     const [month, setMonth] = useState(Temporal.Now.plainDateISO().month);
@@ -21,6 +24,34 @@ export default function MainCalendar(){
     const [endDate, setEndDate] = useState<Date | undefined>(undefined);
     const [openStartDate, setOpenStartDate] = useState(false);
     const [openEndDate, setOpenEndDate] = useState(false);
+    const defaultTime = Temporal.Now.plainTimeISO().toString().slice(0, 8);
+    const [eventTitle, setEventTitle] = useState("Neue Termin");
+    const [eventNotes, setEventNotes] = useState("");
+    const [eventLocation, setEventLocation] = useState("");
+    const [patients, setPatients] = useState<any[]>([]);
+    const [openPatients, setOpenPatients] = useState(false);
+    const [selectedPatientID, setSelectedPatientID] = useState("");
+    const [categories, setCategories] = useState<any[]>([]);
+    const [openCategories, setOpenCategories] = useState(false);
+    const [selectedCategoryID, setSelectedCategoryID] = useState("");
+
+    useEffect(() => {
+        fetchPatients();
+    });
+
+    const fetchPatients = async () => {
+        const { data: patientsData } = await supabase.from('patients').select('*');
+        setPatients(patientsData || []);
+    };
+
+        useEffect(() => {
+        fetchCategories();
+    });
+
+    const fetchCategories = async () => {
+        const { data: categoriesData } = await supabase.from('categories').select('*');
+        setCategories(categoriesData || []);
+    };
 
     useEffect(() => {
         const length = 7;
@@ -94,90 +125,212 @@ export default function MainCalendar(){
         setStartOfWeek(nextStartOfWeek);
     };
 
+    const insertNewEvent = async () => {
+        const newEvent = {
+            created_at: Temporal.Now.plainDateTimeISO(),
+            updated_at: Temporal.Now.plainDateTimeISO(),
+            start_time: startDate?.toLocaleDateString(),
+            end_time: endDate?.toLocaleDateString(),
+            location: eventLocation,
+            patient: selectedPatientID,
+            attachments: null,
+            category: selectedCategoryID,
+            notes: eventNotes,
+            title: eventTitle
+        }
+
+        await supabase.from("appointments").insert(newEvent);
+    };
+
     return(
         <div>
             <Dialog>
                 <form>
                     <DialogTrigger asChild>
-                        <Button>Neue Termin</Button>
+                        <Button>Neuer Termin</Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>Termin erstellen</DialogTitle>
-                            <DialogDescription>
-                                <Label className="font-bold" htmlFor="name">Titel</Label>
-                                <Input id="name" name="title" defaultValue="Neuer Termin"/>
-                                <Label className="font-bold" htmlFor="start-time">Startzeit</Label>
-                                <Label htmlFor="date-picker-1">Datum</Label>
-                                <Popover open={openStartDate} onOpenChange={setOpenStartDate}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                         variant="outline"
-                                        >
-                                            {startDate ? startDate.toLocaleDateString() : "Datum wählen"}
-                                            <ChevronDownIcon/>
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent>
-                                        <Calendar
-                                            mode="single"
-                                            selected={startDate}
-                                            captionLayout="dropdown"
-                                            onSelect={(date) => {
-                                                setStartDate(date);
-                                                setOpenStartDate(false);
-                                            }}
+                            <div>
+                                <DialogDescription>
+                                    <div className="space-y-2">
+                                        <Label className="font-bold" htmlFor="name">Titel</Label>
+                                        <Input 
+                                        id="name" 
+                                        name="title" 
+                                        value={eventTitle}
+                                        onChange={e => setEventTitle(e.target.value)}
                                         />
-                                    </PopoverContent>
-                                </Popover>
-                                <Label htmlFor="time-picker-1">Uhrzeit</Label>
-                                <Input
-                                    type="time"
-                                    id="time-picker-1"
-                                    step="1"
-                                    defaultValue="10:30:00"
-                                    className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                                />
-                                <Label className="font-bold" htmlFor="end-time">Endzeit</Label>
-                                <Label htmlFor="date-picker-2">Datum</Label>
-                                <Popover open={openEndDate} onOpenChange={setOpenEndDate}>
-                                    <PopoverTrigger asChild>
-                                        <Button
-                                         variant="outline"
-                                        >
-                                            {endDate ? endDate.toLocaleDateString() : "Datum wählen"}
-                                            <ChevronDownIcon/>
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent>
-                                        <Calendar
-                                            mode="single"
-                                            selected={endDate}
-                                            captionLayout="dropdown"
-                                            onSelect={(date) => {
-                                                setEndDate(date);
-                                                setOpenEndDate(false);
-                                            }}
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                                <Label htmlFor="time-picker-2">Uhrzeit</Label>
-                                <Input
-                                    type="time"
-                                    id="time-picker-2"
-                                    step="1"
-                                    defaultValue="10:30:00"
-                                    className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
-                                />
-                                <Label className="font-bold" htmlFor="location">Standort</Label>
-                                <Input id="location" placeholder="Standort hinfügen"/>
-                                <Label className="font-bold" htmlFor="notes">Notizen</Label>
-                                <Input id="notes" placeholder="Notizen hinfügen"/>
-                            </DialogDescription>
+                                        <Label className="font-bold" htmlFor="start-time">Startzeit</Label>
+                                        <div className="flex gap-2 items-end">
+                                            <Popover open={openStartDate} onOpenChange={setOpenStartDate}>
+                                                <PopoverTrigger asChild>
+                                                    <Button variant="outline">
+                                                        {startDate ? startDate.toLocaleDateString() : "Datum wählen"}
+                                                        <ChevronDownIcon />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent>
+                                                    <Calendar
+                                                        mode="single"
+                                                        selected={startDate}
+                                                        captionLayout="dropdown"
+                                                        onSelect={(date) => {
+                                                            setStartDate(date);
+                                                            setOpenStartDate(false);
+                                                        }}
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <Input
+                                                type="time"
+                                                id="time-picker-1"
+                                                step="1"
+                                                defaultValue={defaultTime}
+                                                className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                                            />
+                                        </div>
+                                        <Label className="font-bold" htmlFor="end-time">Endzeit</Label>
+                                        <div className="flex gap-2 items-end">
+                                            <Popover open={openEndDate} onOpenChange={setOpenEndDate}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                    variant="outline"
+                                                    >
+                                                        {endDate ? endDate.toLocaleDateString() : "Datum wählen"}
+                                                        <ChevronDownIcon/>
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent>
+                                                    <Calendar
+                                                        mode="single"
+                                                        selected={endDate}
+                                                        captionLayout="dropdown"
+                                                        onSelect={(date) => {
+                                                            setEndDate(date);
+                                                            setOpenEndDate(false);
+                                                        }}
+                                                    />
+                                                </PopoverContent>
+                                            </Popover>
+                                            <Input
+                                                type="time"
+                                                id="time-picker-2"
+                                                step="1"
+                                                defaultValue={defaultTime}
+                                                className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
+                                            />
+                                        </div>
+                                        <div className="flex gap-2 items-end">
+                                            <Label className="font-bold" htmlFor="patient">Patient</Label>
+                                            <Popover open={openPatients} onOpenChange={setOpenPatients}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        aria-expanded={openPatients}
+                                                    >
+                                                        {selectedPatientID
+                                                            ? <span> {patients.find((patient) => patient.id == selectedPatientID)?.firstname} {patients.find((patient) => patient.id == selectedPatientID)?.lastname} </span>
+                                                            : "Patient wählen"}
+                                                        <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[200px] p-0">
+                                                    <Command>
+                                                        <CommandInput placeholder="Suche Patient..." />
+                                                        <CommandList>
+                                                            <CommandEmpty>Keine Patienten gefunden</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {patients.map((patient) => (
+                                                                    <CommandItem
+                                                                        key={patient.id}
+                                                                        value={patient.id}
+                                                                        onSelect={() => {
+                                                                            setSelectedPatientID(patient.id);
+                                                                            setOpenPatients(false);
+                                                                        }}
+                                                                    >
+                                                                        <span>{patient.firstname} {patient.lastname}</span>
+                                                                        {selectedPatientID === patient.id && (
+                                                                            <CheckIcon className="ml-2 h-4 w-4" />
+                                                                        )}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+                                        <div className="flex gap-2 items-end">
+                                            <Label className="font-bold" htmlFor="category">Kategorie</Label>
+                                            <Popover open={openCategories} onOpenChange={setOpenCategories}>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        role="combobox"
+                                                        aria-expanded={openCategories}
+                                                    >
+                                                        {selectedCategoryID
+                                                            ? categories.find((category) => category.id == selectedCategoryID)?.label
+                                                            : "Kategorie wählen"}
+                                                        <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50"/>
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[200px] p-0">
+                                                    <Command>
+                                                        <CommandInput placeholder="Suche Kategorie..." />
+                                                        <CommandList>
+                                                            <CommandEmpty>Keine Kategorien gefunden</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {categories.map((category) => (
+                                                                    <CommandItem
+                                                                        key={category.id}
+                                                                        value={category.id}
+                                                                        onSelect={() => {
+                                                                            setSelectedCategoryID(category.id);
+                                                                            setOpenCategories(false);
+                                                                        }}
+                                                                    >
+                                                                        {category.label}
+                                                                        {selectedCategoryID === category.id && (
+                                                                            <CheckIcon className="ml-2 h-4 w-4" />
+                                                                        )}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                        </div>
+                                        <div className="flex gap-2 items-end">
+                                            <MapPinIcon/>
+                                            <Input 
+                                                id="location" 
+                                                placeholder="Standort hinfügen"
+                                                value={eventLocation}
+                                                onChange={e => setEventLocation(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="flex gap-2 items-end">
+                                            <NotebookPenIcon/>
+                                            <Input
+                                                id="notes"
+                                                placeholder="Notizen hinfügen"
+                                                value={eventNotes}
+                                                onChange={e => setEventNotes(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                </DialogDescription>
+                            </div> 
                         </DialogHeader>
                         <DialogFooter>
                             <DialogClose asChild>
-                                <Button>Abbrechen</Button>
+                                <Button onClick={insertNewEvent}>Erstellen</Button>
                             </DialogClose>
                         </DialogFooter>
                     </DialogContent>
@@ -190,14 +343,17 @@ export default function MainCalendar(){
                     <TabsTrigger value="month">Monat</TabsTrigger>
                 </TabsList>
                 <TabsContent value="list">
-                    List
+                    <AppointmentBox/>
+                    <div className="flex justify-center items-center my-8">
+                        Keine weitere Termine gefunden
+                    </div>
                 </TabsContent>
                 <TabsContent value="week">
                     <Button onClick={moveToPreviousWeek}>
-                        Previous
+                        <MoveLeftIcon/>
                     </Button>
                     <Button onClick={moveToNextWeek}>
-                        Next
+                        <MoveRightIcon/>
                     </Button>
                     <div className="grid grid-cols-8">
                         {/* Empty cell */}
@@ -245,10 +401,10 @@ export default function MainCalendar(){
                         })}
                     </h2>
                     <Button onClick={moveToPreviousMonth}>
-                        Previous
+                        <MoveLeftIcon/>
                     </Button>
                     <Button onClick={moveToNextMonth}>
-                        Next
+                        <MoveRightIcon/>
                     </Button>
                     <div className="grid grid-cols-7">
                         {["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"].map(
