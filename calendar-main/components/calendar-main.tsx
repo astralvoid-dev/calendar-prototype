@@ -8,11 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { CheckIcon, ChevronDownIcon, ChevronsUpDownIcon, MapPinIcon, MoveLeftIcon, MoveRightIcon, NotebookPenIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, ChevronsUpDownIcon, ClockIcon, MapPinIcon, MoveLeftIcon, MoveRightIcon, NotebookPenIcon, PlusIcon } from "lucide-react";
 import { Calendar } from "./ui/calendar";
 import AppointmentBox from "./appointment-box";
 import { supabase } from "@/lib/init-supabase";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "./ui/command";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 
 export default function MainCalendar(){
     const [month, setMonth] = useState(Temporal.Now.plainDateISO().month);
@@ -24,20 +25,31 @@ export default function MainCalendar(){
     const [endDate, setEndDate] = useState<Date | undefined>(undefined);
     const [openStartDate, setOpenStartDate] = useState(false);
     const [openEndDate, setOpenEndDate] = useState(false);
-    const defaultTime = Temporal.Now.plainTimeISO().toString().slice(0, 8);
-    const [eventTitle, setEventTitle] = useState("Neue Termin");
-    const [eventNotes, setEventNotes] = useState("");
-    const [eventLocation, setEventLocation] = useState("");
+    const [startTime, setStartTime] = useState(Temporal.Now.plainTimeISO().toString().slice(0, 8));
+    const [endTime, setEndTime] = useState(Temporal.Now.plainTimeISO().toString().slice(0, 8));
+    const [appointmentTitle, setAppointmentTitle] = useState("Neuer Termin");
+    const [appointmentNotes, setAppointmentNotes] = useState("");
+    const [appointmentLocation, setAppointmentLocation] = useState("");
     const [patients, setPatients] = useState<any[]>([]);
     const [openPatients, setOpenPatients] = useState(false);
     const [selectedPatientID, setSelectedPatientID] = useState("");
     const [categories, setCategories] = useState<any[]>([]);
     const [openCategories, setOpenCategories] = useState(false);
     const [selectedCategoryID, setSelectedCategoryID] = useState("");
+    const [appointments, setAppointments] = useState<any[]>([]);
+
+    useEffect(() => {
+        fetchAppointments();
+    });
+
+    const fetchAppointments = async () => {
+        const { data: appointmentsData } = await supabase.from('appointments').select('*');
+        setAppointments(appointmentsData || []);
+    };
 
     useEffect(() => {
         fetchPatients();
-    });
+    }, [openPatients]);
 
     const fetchPatients = async () => {
         const { data: patientsData } = await supabase.from('patients').select('*');
@@ -46,7 +58,7 @@ export default function MainCalendar(){
 
         useEffect(() => {
         fetchCategories();
-    });
+    }, [openCategories]);
 
     const fetchCategories = async () => {
         const { data: categoriesData } = await supabase.from('categories').select('*');
@@ -125,21 +137,33 @@ export default function MainCalendar(){
         setStartOfWeek(nextStartOfWeek);
     };
 
+    const emptyNewEventData = () => {
+        setStartDate(undefined);
+        setEndDate(undefined);
+        setStartTime(Temporal.Now.plainTimeISO().toString().slice(0, 8));
+        setEndTime(Temporal.Now.plainTimeISO().toString().slice(0, 8));
+        setAppointmentLocation("");
+        setSelectedPatientID("");
+        setSelectedCategoryID("");
+        setAppointmentNotes("");
+        setAppointmentTitle("Neuer Termin");
+    }
+
     const insertNewEvent = async () => {
         const newEvent = {
             created_at: Temporal.Now.plainDateTimeISO(),
             updated_at: Temporal.Now.plainDateTimeISO(),
-            start_time: startDate?.toLocaleDateString(),
-            end_time: endDate?.toLocaleDateString(),
-            location: eventLocation,
+            start_time: startDate?.toLocaleDateString('sv-SE').slice(0, 10) + "T" + startTime,
+            end_time: endDate?.toLocaleDateString('sv-SE').slice(0, 10) + "T" + endTime,
+            location: appointmentLocation,
             patient: selectedPatientID,
             attachments: null,
             category: selectedCategoryID,
-            notes: eventNotes,
-            title: eventTitle
+            notes: appointmentNotes,
+            title: appointmentTitle
         }
-
         await supabase.from("appointments").insert(newEvent);
+        emptyNewEventData();
     };
 
     return(
@@ -147,7 +171,10 @@ export default function MainCalendar(){
             <Dialog>
                 <form>
                     <DialogTrigger asChild>
-                        <Button>Neuer Termin</Button>
+                        <Button>
+                            <PlusIcon/>
+                            Neuer Termin
+                        </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
@@ -159,8 +186,8 @@ export default function MainCalendar(){
                                         <Input 
                                         id="name" 
                                         name="title" 
-                                        value={eventTitle}
-                                        onChange={e => setEventTitle(e.target.value)}
+                                        value={appointmentTitle}
+                                        onChange={e => setAppointmentTitle(e.target.value)}
                                         />
                                         <Label className="font-bold" htmlFor="start-time">Startzeit</Label>
                                         <div className="flex gap-2 items-end">
@@ -187,7 +214,8 @@ export default function MainCalendar(){
                                                 type="time"
                                                 id="time-picker-1"
                                                 step="1"
-                                                defaultValue={defaultTime}
+                                                value={startTime}
+                                                onChange={e => setStartTime(e.target.value)}
                                                 className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
                                             />
                                         </div>
@@ -218,7 +246,8 @@ export default function MainCalendar(){
                                                 type="time"
                                                 id="time-picker-2"
                                                 step="1"
-                                                defaultValue={defaultTime}
+                                                value={endTime}
+                                                onChange={e => setEndTime(e.target.value)}
                                                 className="bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none"
                                             />
                                         </div>
@@ -311,8 +340,8 @@ export default function MainCalendar(){
                                             <Input 
                                                 id="location" 
                                                 placeholder="Standort hinfügen"
-                                                value={eventLocation}
-                                                onChange={e => setEventLocation(e.target.value)}
+                                                value={appointmentLocation}
+                                                onChange={e => setAppointmentLocation(e.target.value)}
                                             />
                                         </div>
                                         <div className="flex gap-2 items-end">
@@ -320,8 +349,8 @@ export default function MainCalendar(){
                                             <Input
                                                 id="notes"
                                                 placeholder="Notizen hinfügen"
-                                                value={eventNotes}
-                                                onChange={e => setEventNotes(e.target.value)}
+                                                value={appointmentNotes}
+                                                onChange={e => setAppointmentNotes(e.target.value)}
                                             />
                                         </div>
                                     </div>
@@ -412,18 +441,62 @@ export default function MainCalendar(){
                         )}
                     </div>
                     <div className="grid grid-cols-7 flex-grow">
-                        {monthCalendar.map((day, index) => (
-                            <div
-                            key={index}
-                            className={`border border-slate-700 p-2 ${
-                                day.isInMonth
-                                ? "bg-white hover:bg-gray-400"
-                                : "bg-slate-300 hover:bg-slate-400 font-light text-slate-600"
-                            }`}
-                            >
-                                {day.date.day}
-                            </div>
-                        ))}
+                        {monthCalendar.map((day, index) => {
+                            const dayAppointments = appointments.filter(app => {
+                                const appDate = app.start_time
+                                    ? new Date(app.start_time)
+                                    : null;
+                                return (
+                                    appDate &&
+                                    appDate.getFullYear() === day.date.year &&
+                                    appDate.getMonth() + 1 === day.date.month && // JS months are 0-based
+                                    appDate.getDate() === day.date.day
+                                );
+                            });
+
+                            return (
+                                <div
+                                    key={index}
+                                    className={`border border-slate-700 p-2 ${
+                                        day.isInMonth
+                                            ? "bg-white hover:bg-gray-400"
+                                            : "bg-slate-300 hover:bg-slate-400 font-light text-slate-600"
+                                    }`}
+                                >
+                                    <div>{day.date.day}</div>
+                                    {dayAppointments.map(app => (
+                                            <HoverCard key={app.id}>
+                                                <HoverCardTrigger>
+                                                    <div
+                                                        className="mt-1 px-1 py-0.5 rounded bg-blue-100 text-xs text-blue-900 truncate"
+                                                        key={app.id}
+                                                        title={app.title}
+                                                    >
+                                                    {app.title}
+                                                    </div>
+                                                </HoverCardTrigger>
+                                                <HoverCardContent>
+                                                    <p>{app.title}</p>
+                                                    <div className="flex gap-2 items-end">
+                                                        <ClockIcon/>
+                                                        <p>
+                                                            {app.start_time} bis {app.end_time}
+                                                        </p>
+                                                    </div>
+                                                    <div className="flex gap-2 items-end">
+                                                        <MapPinIcon/>
+                                                        <p>{app.location}</p>
+                                                    </div>
+                                                    <div className="flex gap-2 items-end">
+                                                        <NotebookPenIcon/>
+                                                        <p>{app.notes}</p>
+                                                    </div>
+                                                </HoverCardContent>
+                                            </HoverCard>
+                                    ))}
+                                </div>
+                            );
+                        })}
                     </div>
                 </TabsContent>
             </Tabs>
